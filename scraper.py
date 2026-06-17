@@ -30,9 +30,9 @@ RSS_FEEDS = [
     },
 
     {
-        "source":"Reuters",
-        "url":"https://news.google.com/rss/search?q=site:reuters.com+when:1d&hl=en-US&gl=US&ceid=US:en"
-    }
+    "source":"Reuters India",
+    "url":"https://news.google.com/rss/search?q=site:reuters.com+India+markets+when:1d&hl=en-IN&gl=IN&ceid=IN:en"
+}
 
 ]
 
