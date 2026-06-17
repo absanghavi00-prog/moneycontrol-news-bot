@@ -165,7 +165,15 @@ r = requests.get(
 )
 
 r.raise_for_status()
+requests.post(
 
+    f"https://ntfy.sh/{TOPIC}",
+
+    data="TEST: Scraper started".encode("utf-8")
+
+)
+
+print("Sent test notification")
 
 soup = BeautifulSoup(
 
@@ -198,11 +206,11 @@ for a in soup.find_all(
     t = title.lower()
 
 
-    # Only stocks page articles
+# Accept all Moneycontrol news links
 
-    if "/news/business/stocks/" not in href:
+if "moneycontrol.com" not in href:
 
-        continue
+    continue
 
 
     if len(title) < 25:
