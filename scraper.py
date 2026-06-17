@@ -9,63 +9,130 @@ TOPIC = "akshit-moneycontrol-stocks"
 
 SEEN_FILE = "seen.csv"
 
+
+# Things to ignore
+
 IGNORE = [
 
     "buy",
+
     "sell",
+
     "hold",
+
     "brokerage",
+
+    "target",
+
     "target price",
-    "stock price",
+
+    "price target",
+
     "share price",
+
+    "stock price",
+
     "technical",
-    "stocks to watch",
-    "top gainers",
-    "top losers",
+
+    "technical view",
+
     "market wrap",
+
+    "stocks to watch",
+
+    "top gainers",
+
+    "top losers",
+
     "buzzing stocks",
+
     "opening bell",
-    "closing bell"
+
+    "closing bell",
+
+    "trading idea",
+
+    "analyst",
+
+    "upgrade",
+
+    "downgrade",
+
+    "jumps",
+
+    "surges",
+
+    "slips",
+
+    "falls",
+
+    "rallies",
+
+    "in charts"
 
 ]
+
+
+# News categories
 
 IMPORTANT = {
 
     "acquire":"M&A",
+
     "acquires":"M&A",
+
     "merger":"M&A",
+
+    "merges":"M&A",
 
     "stake":"Stake Change",
 
+    "promoter":"Promoter",
+
     "order":"Order Win",
+
     "contract":"Order Win",
 
     "approval":"Approval",
+
     "fda":"FDA",
 
     "ceo":"Management",
+
     "cfo":"Management",
 
-    "promoter":"Promoter",
+    "resigns":"Management",
 
     "buyback":"Corporate Action",
+
     "dividend":"Corporate Action",
 
     "block deal":"Block Deal",
+
     "bulk deal":"Bulk Deal",
 
     "raid":"Regulatory",
+
     "fraud":"Regulatory",
 
+    "ed":"Regulatory",
+
+    "cbi":"Regulatory",
+
+    "sebi":"Regulatory",
+
     "default":"Credit Event",
+
     "bankruptcy":"Credit Event",
 
     "exclusive":"Exclusive",
+
     "sources":"Exclusive"
 
 }
 
-# Load seen articles
+
+# Read old links
 
 if os.path.exists(SEEN_FILE):
 
@@ -77,6 +144,7 @@ else:
 
     seen = set()
 
+
 headers = {
 
     "User-Agent":
@@ -85,7 +153,6 @@ headers = {
 
 }
 
-# Download page
 
 r = requests.get(
 
@@ -99,6 +166,7 @@ r = requests.get(
 
 r.raise_for_status()
 
+
 soup = BeautifulSoup(
 
     r.text,
@@ -107,33 +175,51 @@ soup = BeautifulSoup(
 
 )
 
+
 new_seen = set(seen)
 
-for a in soup.find_all("a", href=True):
+
+for a in soup.find_all(
+
+    "a",
+
+    href=True
+
+):
 
     href = a["href"]
 
-    title = a.get_text(strip=True)
+    title = a.get_text(
 
-    title_lower = title.lower()
+        strip=True
+
+    )
+
+    t = title.lower()
+
+
+    # Only stocks page articles
 
     if "/news/business/stocks/" not in href:
 
         continue
 
-    if len(title) < 20:
+
+    if len(title) < 25:
 
         continue
+
 
     if href in seen:
 
         continue
 
-    # Ignore noise
+
+    # Ignore junk
 
     if any(
 
-        x in title_lower
+        x in t
 
         for x in IGNORE
 
@@ -141,31 +227,51 @@ for a in soup.find_all("a", href=True):
 
         continue
 
+
     category = None
 
     score = 0
 
+
     for word, cat in IMPORTANT.items():
 
-        if word in title_lower:
+        if word in t:
 
             category = cat
 
             score += 1
 
-    # Ignore if not important
+
+    # Ignore if no important keyword
 
     if score == 0:
 
         continue
 
-    if score >= 2:
+
+    # Extra filtering
+
+    if score == 1 and category in [
+
+        "Corporate Action"
+
+    ]:
+
+        continue
+
+
+    if category == "Exclusive":
+
+        prefix = "🚨 EXCLUSIVE"
+
+    elif score >= 2:
 
         prefix = "🔥 HIGH IMPACT"
 
     else:
 
         prefix = "⭐ IMPORTANT"
+
 
     msg = f"""
 
@@ -177,23 +283,29 @@ Category: {category}
 
 {href}
 
-Score: {score}/10
-
 """
+
 
     requests.post(
 
         f"https://ntfy.sh/{TOPIC}",
 
-        data=msg.encode("utf-8")
+        data=msg.encode(
+
+            "utf-8"
+
+        )
 
     )
 
+
     print(title)
+
 
     new_seen.add(href)
 
-# Save seen articles
+
+# Save seen links
 
 pd.DataFrame(
 
@@ -212,5 +324,6 @@ pd.DataFrame(
     index=False
 
 )
+
 
 print("Done")
