@@ -9,47 +9,136 @@ TOPIC = "akshit-moneycontrol-stocks"
 
 SEEN_FILE = "seen.csv"
 
-headers = {
-    "User-Agent":
-    "Mozilla/5.0"
+IGNORE = [
+
+    "buy",
+
+    "sell",
+
+    "hold",
+
+    "brokerage",
+
+    "target price",
+
+    "stock price",
+
+    "share price",
+
+    "technical",
+
+    "stocks to watch",
+
+    "top gainers",
+
+    "top losers",
+
+    "market wrap",
+
+    "buzzing stocks",
+
+    "opening bell",
+
+    "closing bell"
+
+]
+
+IMPORTANT = {
+
+    "acquire":"M&A",
+
+    "acquires":"M&A",
+
+    "merger":"M&A",
+
+    "stake":"Stake Change",
+
+    "order":"Order Win",
+
+    "contract":"Order Win",
+
+    "approval":"Approval",
+
+    "fda":"FDA",
+
+    "ceo":"Management",
+
+    "cfo":"Management",
+
+    "promoter":"Promoter",
+
+    "buyback":"Corporate Action",
+
+    "dividend":"Corporate Action",
+
+    "block deal":"Block Deal",
+
+    "bulk deal":"Bulk Deal",
+
+    "raid":"Regulatory",
+
+    "ed":"Regulatory",
+
+    "cbi":"Regulatory",
+
+    "fraud":"Regulatory",
+
+    "default":"Credit Event",
+
+    "bankruptcy":"Credit Event",
+
+    "exclusive":"Exclusive"
+
 }
 
-# Load seen links
 
 if os.path.exists(SEEN_FILE):
 
-    df = pd.read_csv(SEEN_FILE)
-
-    seen = set(df["link"])
+    seen = set(pd.read_csv(SEEN_FILE)["link"])
 
 else:
 
     seen = set()
 
-# Download page
+
+headers = {
+
+    "User-Agent":
+
+    "Mozilla/5.0"
+
+}
+
 
 r = requests.get(
+
     URL,
+
     headers=headers,
+
     timeout=20
+
 )
 
 r.raise_for_status()
 
 soup = BeautifulSoup(
+
     r.text,
+
     "html.parser"
+
 )
 
 new_seen = set(seen)
-
-# Find all links
 
 for a in soup.find_all("a", href=True):
 
     href = a["href"]
 
     title = a.get_text(strip=True)
+
+    title_lower = title.lower()
 
     if "/news/business/stocks/" not in href:
 
@@ -63,9 +152,55 @@ for a in soup.find_all("a", href=True):
 
         continue
 
-    print("NEW:", title)
 
-    msg = f"📰 {title}\n\n{href}"
+    # Remove noise
+
+    if any(
+
+        x in title_lower
+
+        for x in IGNORE
+
+    ):
+
+        continue
+
+
+    category = None
+
+    score = 0
+
+
+    for word, cat in IMPORTANT.items():
+
+        if word in title_lower:
+
+            category = cat
+
+            score += 1
+
+
+    if score == 0:
+
+        continue
+
+
+    prefix = "🔥 HIGH IMPACT"
+
+    msg = f"""
+
+{prefix}
+
+Category: {category}
+
+{title}
+
+{href}
+
+Score: {score}/10
+
+"""
+
 
     requests.post(
 
@@ -75,20 +210,29 @@ for a in soup.find_all("a", href=True):
 
     )
 
+
+    print(title)
+
     new_seen.add(href)
 
-# Save seen links
 
-pd.DataFrame({
+pd.DataFrame(
 
-    "link": list(new_seen)
+    {
 
-}).to_csv(
+        "link":
+
+        list(new_seen)
+
+    }
+
+).to_csv(
 
     SEEN_FILE,
 
     index=False
 
 )
+
 
 print("Done")
