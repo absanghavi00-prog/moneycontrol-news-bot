@@ -68,38 +68,17 @@ IGNORE = [
 
 IMPORTANT = {
 
-    "exclusive":"Exclusive",
-    "sources":"Exclusive",
-
-    "acquire":"M&A",
-    "acquires":"M&A",
-    "merger":"M&A",
-    "merges":"M&A",
-
-    "stake":"Stake Change",
-    "promoter":"Promoter",
-
-    "order":"Order Win",
-    "contract":"Order Win",
-
-    "approval":"Approval",
-    "fda":"FDA",
-
-    "ceo":"Management",
-    "cfo":"Management",
-    "resigns":"Management",
-
-    "block deal":"Block Deal",
-    "bulk deal":"Bulk Deal",
-
-    "raid":"Regulatory",
-    "fraud":"Regulatory",
-    "ed":"Regulatory",
-    "cbi":"Regulatory",
-    "sebi":"Regulatory",
-
-    "default":"Credit Event",
-    "bankruptcy":"Credit Event"
+   "talks":"M&A",
+"plans":"Corporate",
+"capex":"Corporate",
+"ipo":"Corporate",
+"results":"Earnings",
+"guidance":"Earnings",
+"rbi":"Regulatory",
+"government":"Regulatory",
+"board":"Corporate",
+"fundraise":"Corporate",
+"investment":"Corporate",
 
 }
 
