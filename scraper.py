@@ -1,8 +1,41 @@
 import requests
+import pandas as pd
+import os
 import xml.etree.ElementTree as ET
 
-RSS_URL = "https://www.moneycontrol.com/rss/business.xml"
 TOPIC = "akshit-moneycontrol-stocks"
+
+SEEN_FILE = "seen.csv"
+
+RSS_FEEDS = [
+
+    {
+        "source":"Moneycontrol",
+        "url":"https://www.moneycontrol.com/rss/business.xml"
+    },
+
+    {
+        "source":"Mint News",
+        "url":"https://www.livemint.com/rss/newsRSS"
+    },
+
+    {
+        "source":"Mint Companies",
+        "url":"https://www.livemint.com/rss/companiesRSS"
+    },
+
+    {
+        "source":"Mint Markets",
+        "url":"https://www.livemint.com/rss/marketsRSS"
+    },
+
+    {
+        "source":"Reuters",
+        "url":"https://news.google.com/rss/search?q=site:reuters.com+when:1d&hl=en-US&gl=US&ceid=US:en"
+    }
+
+]
+
 
 IGNORE = [
 
@@ -28,95 +61,178 @@ IGNORE = [
     "analyst",
     "upgrade",
     "downgrade",
-    "jumps",
-    "surges",
-    "slips",
-    "falls",
-    "rallies",
     "in charts"
 
 ]
 
+
 IMPORTANT = {
+
+    "exclusive":"Exclusive",
+    "sources":"Exclusive",
 
     "acquire":"M&A",
     "acquires":"M&A",
     "merger":"M&A",
+    "merges":"M&A",
+
     "stake":"Stake Change",
     "promoter":"Promoter",
+
     "order":"Order Win",
     "contract":"Order Win",
+
     "approval":"Approval",
     "fda":"FDA",
+
     "ceo":"Management",
     "cfo":"Management",
     "resigns":"Management",
-    "buyback":"Corporate Action",
-    "dividend":"Corporate Action",
+
     "block deal":"Block Deal",
     "bulk deal":"Bulk Deal",
+
     "raid":"Regulatory",
     "fraud":"Regulatory",
     "ed":"Regulatory",
     "cbi":"Regulatory",
     "sebi":"Regulatory",
+
     "default":"Credit Event",
-    "bankruptcy":"Credit Event",
-    "exclusive":"Exclusive",
-    "sources":"Exclusive"
+    "bankruptcy":"Credit Event"
 
 }
 
-print("Downloading RSS...")
 
-r = requests.get(RSS_URL, timeout=20)
+# Read seen links
 
-print("Status:", r.status_code)
+if os.path.exists(SEEN_FILE):
 
-root = ET.fromstring(r.content)
+    df = pd.read_csv(SEEN_FILE)
+
+    seen = set(df["link"])
+
+else:
+
+    seen = set()
+
+
+new_seen = set(seen)
 
 count = 0
 
-for item in root.findall(".//item"):
 
-    title = item.findtext("title", "")
+for feed in RSS_FEEDS:
 
-    link = item.findtext("link", "")
+    print("\nDownloading", feed["source"])
 
-    t = title.lower()
+    try:
 
-    if any(x in t for x in IGNORE):
+        r = requests.get(
+
+            feed["url"],
+
+            timeout=20,
+
+            headers={
+
+                "User-Agent":
+
+                "Mozilla/5.0"
+
+            }
+
+        )
+
+        root = ET.fromstring(r.content)
+
+    except Exception as e:
+
+        print("Failed:", e)
+
         continue
 
-    category = None
-    score = 0
 
-    for word, cat in IMPORTANT.items():
+    for item in root.findall(".//item"):
 
-        if word in t:
+        title = item.findtext(
 
-            category = cat
+            "title",
 
-            score += 1
+            ""
 
-    if score == 0:
-        continue
+        ).strip()
 
-    if category == "Exclusive":
+        link = item.findtext(
 
-        prefix = "🚨 EXCLUSIVE"
+            "link",
 
-    elif score >= 2:
+            ""
 
-        prefix = "🔥 HIGH IMPACT"
+        ).strip()
 
-    else:
 
-        prefix = "⭐ IMPORTANT"
+        if title == "" or link == "":
 
-    msg = f"""
+            continue
+
+
+        if link in seen:
+
+            continue
+
+
+        t = title.lower()
+
+
+        if any(
+
+            x in t
+
+            for x in IGNORE
+
+        ):
+
+            continue
+
+
+        category = None
+
+        score = 0
+
+
+        for word, cat in IMPORTANT.items():
+
+            if word in t:
+
+                category = cat
+
+                score += 1
+
+
+        if score == 0:
+
+            continue
+
+
+        if category == "Exclusive":
+
+            prefix = "🚨 EXCLUSIVE"
+
+        elif score >= 2:
+
+            prefix = "🔥 HIGH IMPACT"
+
+        else:
+
+            prefix = "⭐ IMPORTANT"
+
+
+        msg = f"""
 
 {prefix}
+
+Source: {feed['source']}
 
 Category: {category}
 
@@ -126,16 +242,58 @@ Category: {category}
 
 """
 
-    requests.post(
 
-        f"https://ntfy.sh/{TOPIC}",
+        requests.post(
 
-        data=msg.encode("utf-8")
+            f"https://ntfy.sh/{TOPIC}",
 
-    )
+            data=msg.encode(
 
-    print(title)
+                "utf-8"
 
-    count += 1
+            )
 
-print("Sent", count, "notifications")
+        )
+
+
+        print(
+
+            feed["source"],
+
+            ":",
+
+            title
+
+        )
+
+
+        new_seen.add(
+
+            link
+
+        )
+
+        count += 1
+
+
+
+pd.DataFrame(
+
+    {
+
+        "link":
+
+        list(new_seen)
+
+    }
+
+).to_csv(
+
+    SEEN_FILE,
+
+    index=False
+
+)
+
+
+print("\nSent", count, "notifications")
