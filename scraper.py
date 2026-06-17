@@ -1,50 +1,141 @@
 import requests
-from bs4 import BeautifulSoup
+import xml.etree.ElementTree as ET
 
-URL = "https://www.moneycontrol.com/news/business/stocks/"
+RSS_URL = "https://www.moneycontrol.com/rss/business.xml"
 TOPIC = "akshit-moneycontrol-stocks"
 
-headers = {
-    "User-Agent": "Mozilla/5.0"
+IGNORE = [
+
+    "buy",
+    "sell",
+    "hold",
+    "brokerage",
+    "target",
+    "target price",
+    "price target",
+    "share price",
+    "stock price",
+    "technical",
+    "technical view",
+    "market wrap",
+    "stocks to watch",
+    "top gainers",
+    "top losers",
+    "buzzing stocks",
+    "opening bell",
+    "closing bell",
+    "trading idea",
+    "analyst",
+    "upgrade",
+    "downgrade",
+    "jumps",
+    "surges",
+    "slips",
+    "falls",
+    "rallies",
+    "in charts"
+
+]
+
+IMPORTANT = {
+
+    "acquire":"M&A",
+    "acquires":"M&A",
+    "merger":"M&A",
+    "stake":"Stake Change",
+    "promoter":"Promoter",
+    "order":"Order Win",
+    "contract":"Order Win",
+    "approval":"Approval",
+    "fda":"FDA",
+    "ceo":"Management",
+    "cfo":"Management",
+    "resigns":"Management",
+    "buyback":"Corporate Action",
+    "dividend":"Corporate Action",
+    "block deal":"Block Deal",
+    "bulk deal":"Bulk Deal",
+    "raid":"Regulatory",
+    "fraud":"Regulatory",
+    "ed":"Regulatory",
+    "cbi":"Regulatory",
+    "sebi":"Regulatory",
+    "default":"Credit Event",
+    "bankruptcy":"Credit Event",
+    "exclusive":"Exclusive",
+    "sources":"Exclusive"
+
 }
 
-print("Downloading page...")
+print("Downloading RSS...")
 
-r = requests.get(
-    URL,
-    headers=headers,
-    timeout=20
-)
+r = requests.get(RSS_URL, timeout=20)
 
 print("Status:", r.status_code)
 
-soup = BeautifulSoup(r.text, "html.parser")
+root = ET.fromstring(r.content)
 
 count = 0
 
-for a in soup.find_all("a", href=True):
+for item in root.findall(".//item"):
 
-    href = a["href"]
+    title = item.findtext("title", "")
 
-    title = a.get_text(strip=True)
+    link = item.findtext("link", "")
 
-    if len(title) < 30:
+    t = title.lower()
+
+    if any(x in t for x in IGNORE):
         continue
 
-    if "moneycontrol.com" not in href:
+    category = None
+    score = 0
+
+    for word, cat in IMPORTANT.items():
+
+        if word in t:
+
+            category = cat
+
+            score += 1
+
+    if score == 0:
         continue
+
+    if category == "Exclusive":
+
+        prefix = "🚨 EXCLUSIVE"
+
+    elif score >= 2:
+
+        prefix = "🔥 HIGH IMPACT"
+
+    else:
+
+        prefix = "⭐ IMPORTANT"
+
+    msg = f"""
+
+{prefix}
+
+Category: {category}
+
+{title}
+
+{link}
+
+"""
+
+    requests.post(
+
+        f"https://ntfy.sh/{TOPIC}",
+
+        data=msg.encode("utf-8")
+
+    )
 
     print(title)
 
-    requests.post(
-        f"https://ntfy.sh/{TOPIC}",
-        data=f"{title}\n\n{href}".encode("utf-8")
-    )
-
     count += 1
-
-    # send only first 5 for testing
-    if count >= 5:
-        break
 
 print("Sent", count, "notifications")
